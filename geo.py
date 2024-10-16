@@ -378,58 +378,102 @@ with tab3:
 with tab4:
     st.header("Statistical Insights")
     
-    # Number of hospitals per state
-    hospitals_per_state = healthcare_df['statename'].value_counts().reset_index()
-    hospitals_per_state.columns = ['State', 'Number of Hospitals']
+    st.subheader("Compare Multiple States and Local Governments")
     
-    # Number of hospitals per LGA within the selected state
-    hospitals_per_lga = healthcare_df[healthcare_df['statename'] == state]['lganame'].value_counts().reset_index()
-    hospitals_per_lga.columns = ['Local Government Area', 'Number of Hospitals']
+    # Multi-select for States
+    selected_states = st.multiselect(
+        "Select States for Comparison",
+        options=sorted(lga_gdf["NAME_1"].unique()),
+        default=sorted(lga_gdf["NAME_1"].unique())  # Default to all states
+    )
     
-    # Functionality status distribution
-    func_status = healthcare_df[healthcare_df['statename'] == state]['func_stats'].value_counts().reset_index()
-    func_status.columns = ['Functionality Status', 'Count']
+    # Filter LGAs based on selected states
+    if selected_states:
+        filtered_lgas = lga_gdf[lga_gdf["NAME_1"].isin(selected_states)]["NAME_2"].unique()
+    else:
+        filtered_lgas = []
     
-    # Display the statistics
-    col1, col2 = st.columns(2)
+    # Multi-select for LGAs
+    selected_lgas = st.multiselect(
+        "Select Local Government Areas for Comparison",
+        options=sorted(filtered_lgas),
+        default=sorted(filtered_lgas)  # Default to all LGAs in selected states
+    )
     
-    with col1:
-        st.subheader("Number of Hospitals per State")
-        fig1, ax1 = plt.subplots(figsize=(10, 6))
-        sns.barplot(data=hospitals_per_state, x='Number of Hospitals', y='State', palette='viridis', ax=ax1)
-        ax1.set_title("Hospitals Distribution by State")
-        ax1.set_xlabel("Number of Hospitals")
-        ax1.set_ylabel("State")
-        st.pyplot(fig1)
+    # Filter healthcare data based on selections
+    if selected_states and selected_lgas:
+        filtered_healthcare_df = healthcare_df[
+            (healthcare_df['statename'].isin(selected_states)) &
+            (healthcare_df['lganame'].isin(selected_lgas))
+        ]
+    elif selected_states:
+        filtered_healthcare_df = healthcare_df[
+            (healthcare_df['statename'].isin(selected_states))
+        ]
+    elif selected_lgas:
+        filtered_healthcare_df = healthcare_df[
+            (healthcare_df['lganame'].isin(selected_lgas))
+        ]
+    else:
+        filtered_healthcare_df = healthcare_df.copy()
     
-    with col2:
-        st.subheader("Number of Hospitals per LGA in Selected State")
-        fig2, ax2 = plt.subplots(figsize=(10, 6))
-        sns.barplot(data=hospitals_per_lga, x='Number of Hospitals', y='Local Government Area', palette='magma', ax=ax2)
-        ax2.set_title(f"Hospitals Distribution by LGA in {state}")
-        ax2.set_xlabel("Number of Hospitals")
-        ax2.set_ylabel("Local Government Area")
-        st.pyplot(fig2)
-    
-    st.subheader("Functionality Status of Hospitals in Selected State")
-    fig3, ax3 = plt.subplots(figsize=(8, 6))
-    sns.countplot(data=healthcare_df[healthcare_df['statename'] == state], 
-                  y='func_stats', palette='coolwarm', ax=ax3)
-    ax3.set_title(f"Functionality Status in {state}")
-    ax3.set_xlabel("Count")
-    ax3.set_ylabel("Functionality Status")
-    st.pyplot(fig3)
-    
-    # Displaying the data in tables
-    st.subheader("Data Tables")
-    st.markdown("**Hospitals per State**")
-    st.dataframe(hospitals_per_state)
-    
-    st.markdown(f"**Hospitals per LGA in {state}**")
-    st.dataframe(hospitals_per_lga)
-    
-    st.markdown("**Functionality Status Distribution**")
-    st.dataframe(func_status)
+    # Check if filtered data is not empty
+    if not filtered_healthcare_df.empty:
+        # Number of hospitals per state
+        hospitals_per_state = filtered_healthcare_df['statename'].value_counts().reset_index()
+        hospitals_per_state.columns = ['State', 'Number of Hospitals']
+        
+        # Number of hospitals per LGA
+        hospitals_per_lga = filtered_healthcare_df['lganame'].value_counts().reset_index()
+        hospitals_per_lga.columns = ['Local Government Area', 'Number of Hospitals']
+        
+        # Functionality status distribution
+        func_status = filtered_healthcare_df['func_stats'].value_counts().reset_index()
+        func_status.columns = ['Functionality Status', 'Count']
+        
+        # Display the statistics
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Number of Hospitals per State")
+            fig1, ax1 = plt.subplots(figsize=(10, max(6, len(hospitals_per_state)*0.5)))
+            sns.barplot(data=hospitals_per_state, x='Number of Hospitals', y='State', palette='viridis', ax=ax1)
+            ax1.set_title("Hospitals Distribution by State")
+            ax1.set_xlabel("Number of Hospitals")
+            ax1.set_ylabel("State")
+            st.pyplot(fig1)
+        
+        with col2:
+            st.subheader("Number of Hospitals per Local Government Area")
+            fig2, ax2 = plt.subplots(figsize=(10, max(6, len(hospitals_per_lga)*0.5)))
+            sns.barplot(data=hospitals_per_lga, x='Number of Hospitals', y='Local Government Area', palette='magma', ax=ax2)
+            ax2.set_title("Hospitals Distribution by LGA")
+            ax2.set_xlabel("Number of Hospitals")
+            ax2.set_ylabel("Local Government Area")
+            st.pyplot(fig2)
+        
+        st.subheader("Functionality Status of Hospitals")
+        fig3, ax3 = plt.subplots(figsize=(8, 6))
+        sns.countplot(data=filtered_healthcare_df, 
+                      y='func_stats', palette='coolwarm', ax=ax3)
+        ax3.set_title("Functionality Status of Hospitals")
+        ax3.set_xlabel("Count")
+        ax3.set_ylabel("Functionality Status")
+        st.pyplot(fig3)
+        
+        # Displaying the data in tables
+        st.subheader("Data Tables")
+        st.markdown("**Hospitals per State**")
+        st.dataframe(hospitals_per_state)
+        
+        st.markdown("**Hospitals per Local Government Area**")
+        st.dataframe(hospitals_per_lga)
+        
+        st.markdown("**Functionality Status Distribution**")
+        st.dataframe(func_status)
+        
+    else:
+        st.warning("No healthcare facilities found for the selected States and Local Government Areas.")
 
 # Footer with Data Sources
 st.markdown("---")
