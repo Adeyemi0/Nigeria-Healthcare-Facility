@@ -380,11 +380,11 @@ with tab4:
     
     st.subheader("Compare Multiple States and Local Governments")
     
-    # Multi-select for States
+    # Multi-select for States without default selection
     selected_states = st.multiselect(
         "Select States for Comparison",
         options=sorted(lga_gdf["NAME_1"].unique()),
-        default=sorted(lga_gdf["NAME_1"].unique())  # Default to all states
+        default=[]  # No default selection
     )
     
     # Filter LGAs based on selected states
@@ -393,12 +393,17 @@ with tab4:
     else:
         filtered_lgas = []
     
-    # Multi-select for LGAs
+    # Multi-select for LGAs without default selection
     selected_lgas = st.multiselect(
         "Select Local Government Areas for Comparison",
         options=sorted(filtered_lgas),
-        default=sorted(filtered_lgas)  # Default to all LGAs in selected states
+        default=[],  # No default selection
+        disabled=not bool(selected_states)  # Disable if no states are selected
     )
+    
+    # Inform the user if LGAs are disabled
+    if not selected_states:
+        st.info("Please select at least one state to enable LGA selection.")
     
     # Filter healthcare data based on selections
     if selected_states and selected_lgas:
@@ -415,7 +420,7 @@ with tab4:
             (healthcare_df['lganame'].isin(selected_lgas))
         ]
     else:
-        filtered_healthcare_df = healthcare_df.copy()
+        filtered_healthcare_df = pd.DataFrame()  # Empty DataFrame when no selection is made
     
     # Check if filtered data is not empty
     if not filtered_healthcare_df.empty:
@@ -436,7 +441,7 @@ with tab4:
         
         with col1:
             st.subheader("Number of Hospitals per State")
-            fig1, ax1 = plt.subplots(figsize=(10, max(6, len(hospitals_per_state)*0.5)))
+            fig1, ax1 = plt.subplots(figsize=(10, max(6, len(hospitals_per_state) * 0.5)))
             sns.barplot(data=hospitals_per_state, x='Number of Hospitals', y='State', palette='viridis', ax=ax1)
             ax1.set_title("Hospitals Distribution by State")
             ax1.set_xlabel("Number of Hospitals")
@@ -445,7 +450,7 @@ with tab4:
         
         with col2:
             st.subheader("Number of Hospitals per Local Government Area")
-            fig2, ax2 = plt.subplots(figsize=(10, max(6, len(hospitals_per_lga)*0.5)))
+            fig2, ax2 = plt.subplots(figsize=(10, max(6, len(hospitals_per_lga) * 0.5)))
             sns.barplot(data=hospitals_per_lga, x='Number of Hospitals', y='Local Government Area', palette='magma', ax=ax2)
             ax2.set_title("Hospitals Distribution by LGA")
             ax2.set_xlabel("Number of Hospitals")
@@ -473,7 +478,8 @@ with tab4:
         st.dataframe(func_status)
         
     else:
-        st.warning("No healthcare facilities found for the selected States and Local Government Areas.")
+        st.warning("Please select at least one state or local government area to display statistical insights.")
+
 
 # Footer with Data Sources
 st.markdown("---")
